@@ -311,7 +311,8 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
           <label class="ck"><input id="oMolt" type="checkbox" checked><span>Scelgo il moltiplicatore al posto dell’ausiliaria<small>Aggiunge 5 volte il contributo dell’ultimo anno, se esci per limite di età, con 40 anni di servizio o entro 5 anni dal limite.</small></span></label>
           <label class="ck"><input id="oAgg" type="checkbox" checked><span>Applico l’aumento aggiuntivo del comparto<small>+1 mese nel 2028, +2 nel 2029, +3 dal 2030 (legge di bilancio 2026). Un decreto potrà escludere alcuni ruoli.</small></span></label>
           <label class="ck"><input id="oStime" type="checkbox" checked><span>Includo le stime di speranza di vita dopo il 2028<small>Dal 2029 uso le previsioni della Ragioneria generale: non sono ancora decise.</small></span></label>
-          <label class="ck"><input id="oCalo" type="checkbox" checked><span>Prevedo coefficienti più bassi dal 2027<small>Non sono ancora pubblicati. Ipotizzo un calo dell’1,8% ogni due anni, come nell’ultima revisione.</small></span></label>
+          <label class="ck"><input id="oCalo" type="checkbox" checked><span>Prevedo coefficienti più bassi dal 2029<small>Per il 2027 e il 2028 uso i coefficienti ufficiali. Dopo ipotizzo un calo dell’1,5% ogni due anni, come nell’ultima revisione.</small></span></label>
+          <label class="ck"><input id="oDed" type="checkbox"><span>Simulo la previdenza dedicata (proposta)<small>Non è ancora legge. La bozza di emendamento alla manovra 2027 calcola la quota contributiva come se avessi 2 anni in più nel 2027-2028, 3 dal 2029 al 2031, 4 dal 2032.</small></span></label>
         </fieldset>
       </div>
     </details>
@@ -337,12 +338,29 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
       <tr><td>Quota retributiva<small id="dRetro"></small></td><td id="vRetro">—</td></tr>
       <tr><td>Quota contributiva<small id="dContr"></small></td><td id="vContr">—</td></tr>
       <tr id="rMolt" hidden><td>Moltiplicatore<small id="dMolt"></small></td><td id="vMolt">—</td></tr>
+      <tr id="rDed" hidden><td>Effetto della previdenza dedicata<small id="dDed"></small></td><td id="vDed">—</td></tr>
       <tr><td>Pensione lorda annua</td><td id="vLordoA">—</td></tr>
       <tr><td>Tasse (Irpef e addizionali)<small>Dopo le detrazioni per pensione</small></td><td id="vTasse">—</td></tr>
       <tr class="tot"><td>Pensione netta annua</td><td id="vNettoA">—</td></tr>
     </table>
     <div class="bar" aria-hidden="true"><i id="bRetro" style="background:#E3B341"></i><i id="bContr" style="background:#7C6BC4"></i></div>
     <div class="legend"><span><s style="background:#E3B341"></s>Quota retributiva</span><span><s style="background:#7C6BC4"></s>Quota contributiva</span></div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Riserva o ausiliaria?</h2>
+    <p class="hint">Se lasci il servizio per limite di età scegli una delle due. Importi netti al mese, per l’uscita selezionata.</p>
+    <p class="quando" id="ausNo" hidden>Con questa data di uscita l’ausiliaria non spetta: serve il limite di età, 40 anni di servizio o, per alcuni ruoli, l’uscita entro 5 anni dal limite.</p>
+    <div id="ausSi">
+      <table class="tbl" aria-label="Confronto tra riserva e ausiliaria">
+        <tr><td>Riserva con moltiplicatore<small>Pensione con il moltiplicatore, da subito e per sempre</small></td><td id="vRis">—</td></tr>
+        <tr><td>Ausiliaria, primi 5 anni<small id="dAus1"></small></td><td id="vAus1">—</td></tr>
+        <tr><td>Ausiliaria, dopo i 5 anni<small id="dAus2"></small></td><td id="vAus2">—</td></tr>
+        <tr class="tot"><td>Differenza dopo i 5 anni<small>Ausiliaria rispetto alla riserva</small></td><td id="vAusDiff">—</td></tr>
+      </table>
+      <p class="quando" id="qAus"></p>
+    </div>
+    <details class="q"><summary>Che cosa comporta l’ausiliaria?</summary><p>Per 5 anni resti a disposizione dell’amministrazione per eventuali richiami nella provincia di residenza. Non puoi assumere impieghi o cariche presso imprese che hanno rapporti contrattuali con l’amministrazione militare: se lo fai, o se rifiuti o revochi due volte un impiego assegnato, passi nella riserva e perdi l’indennità. Le altre attività vanno comunicate all’amministrazione, che le verifica: prima di aprire una partita IVA chiedi al tuo ufficio del personale. Sull’ausiliaria paghi i contributi, che alla fine aumentano la pensione.</p></details>
   </div>
 
   <div class="card" style="margin-top:14px">
@@ -396,7 +414,7 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
     <b>È una stima, non un calcolo ufficiale.</b> Fa fede solo il calcolo dell’INPS: controlla l’importo definitivo sul tuo estratto conto o con il patronato. L’importo è calcolato sui dati che inserisci e semplifica alcune regole (per esempio la base pensionabile e le rivalutazioni).
   </div>
   <div class="note" style="margin-top:12px">
-    <b>Regole e fonti.</b> Requisiti: 41 anni di contributi (15 mesi di finestra) oppure 58 anni con 35 di contributi (12 mesi), più l’adeguamento alla speranza di vita: +1 mese nel 2027 e +3 nel 2028 (circolare INPS n. 28/2026); l’aumento aggiuntivo del comparto è nella legge 199/2025, art. 1, c. 180-181, e un decreto potrà escludere alcuni ruoli. Dal 2029 uso le stime della Ragioneria generale. Importo: quota retributiva con aliquota 2,44% per anno (Corte dei conti, SS.RR. 1/2021, e INPS) o art. 54 DPR 1092/1973 per chi aveva 18 anni nel 1995, con maggiorazione del 18% e sei scatti sulla parte stipendiale; quota contributiva al 33%, rivalutata col PIL e trasformata con i coefficienti 2025-2026 (DM 436/2024); moltiplicatore previsto dall’art. 3, c. 7, D.Lgs. 165/1997. Imposte 2026: Irpef 23%, 33%, 43% con detrazione per pensione (art. 13 TUIR). Buonuscita: 1/12 dell’80% dello stipendio annuo per ogni anno di servizio, tassazione separata con abbattimento del 26,04%, pagamento dopo 12 o 24 mesi (più 3) e a rate sopra 50.000 euro (INPS). Indennità supplementare: art. 1914 del D.Lgs. 66/2010 come modificato dalla legge di bilancio 2023 (2% fino al 2022, poi 2,5% o 3%), senza tasse.<br><br><b>Cosa è ancora un’ipotesi.</b> Quota B calcolata al 95% dell’ultimo stipendio, quota stipendiale al 60% se non la indichi, rivalutazione del 2% annuo, coefficienti 2027 in calo, aumenti dopo il 2028. Per la buonuscita uso lo stipendio fisso che indichi, senza arretrati né accessori. Non sono considerati: ausiliaria, anticipo bancario della buonuscita, pensione privilegiata, perequazione, IIS e accessori diversi dall’imponibile indicato.
+    <b>Regole e fonti.</b> Requisiti: 41 anni di contributi (15 mesi di finestra) oppure 58 anni con 35 di contributi (12 mesi), più l’adeguamento alla speranza di vita: +1 mese nel 2027 e +3 nel 2028 (circolare INPS n. 28/2026); l’aumento aggiuntivo del comparto è nella legge 199/2025, art. 1, c. 180-181, e un decreto potrà escludere alcuni ruoli. Dal 2029 uso le stime della Ragioneria generale. Importo: quota retributiva con aliquota 2,44% per anno (Corte dei conti, SS.RR. 1/2021, e INPS) o art. 54 DPR 1092/1973 per chi aveva 18 anni nel 1995, con maggiorazione del 18% e sei scatti sulla parte stipendiale; quota contributiva al 33%, rivalutata col PIL e trasformata con i coefficienti 2025-2026 (DM 436/2024) e, per chi esce dal 2027, con quelli del decreto direttoriale 16 ottobre 2026; moltiplicatore previsto dall’art. 3, c. 7, D.Lgs. 165/1997. Imposte 2026: Irpef 23%, 33%, 43% con detrazione per pensione (art. 13 TUIR). Buonuscita: 1/12 dell’80% dello stipendio annuo per ogni anno di servizio, tassazione separata con abbattimento del 26,04%, pagamento dopo 12 o 24 mesi (più 3) e a rate sopra 50.000 euro (INPS). Indennità supplementare: art. 1914 del D.Lgs. 66/2010 come modificato dalla legge di bilancio 2023 (2% fino al 2022, poi 2,5% o 3%), senza tasse.<br><br><b>Cosa è ancora un’ipotesi.</b> Quota B calcolata al 95% dell’ultimo stipendio, quota stipendiale al 60% se non la indichi, rivalutazione del 2% annuo, coefficienti in calo dal 2029, aumenti dopo il 2028 e, se la attivi, previdenza dedicata (bozza di emendamento alla manovra 2027). Per la buonuscita uso lo stipendio fisso che indichi, senza arretrati né accessori. Per l’ausiliaria confronto l’indennità con lo stipendio annuo indicato e non ricalcolo la quota retributiva. Non sono considerati: anticipo bancario della buonuscita, pensione privilegiata, perequazione, IIS e accessori diversi dall’imponibile indicato.
   </div>
 </section>
 </main>
@@ -433,7 +451,7 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
 /* ===== Regole e calcolo (nessun accesso alla pagina) =====
    Fonti: circolare INPS n. 28/2026; L. 199/2025 (bilancio 2026) c. 180-181; D.Lgs. 165/1997;
    DPR 1092/1973 art. 53-54; Corte dei conti SS.RR. n. 1/2021 e INPS (aliquota 2,44%);
-   D.Lgs. 165/1997 art. 3 c. 7 (moltiplicatore); DM 436/2024 (coefficienti 2025-2026);
+   D.Lgs. 165/1997 art. 3 c. 7 (moltiplicatore); DM 436/2024 (coefficienti 2025-2026); DD 16/10/2026 (coefficienti dal 2027);
    art. 11 e 13 TUIR come modificati dalla L. 199/2025. */
 const REGOLE = {
   // mesi di adeguamento rispetto ai requisiti 2025-2026 (41 anni; 58 anni + 35; limite d'età del ruolo)
@@ -442,8 +460,11 @@ const REGOLE = {
   aggiuntivo: function(anno, on){ if(!on) return 0; if(anno<=2027) return 0; if(anno===2028) return 1; if(anno===2029) return 2; return 3; },
   contributiAnzianita: 41, etaAnzianita: 58, contributiEtaAnzianita: 35, servizioMinimoVecchiaia: 20,
   finestraEta: 12, finestraContributi: 15,
-  coeff: {57:4.204,58:4.308,59:4.419,60:4.536,61:4.661,62:4.795,63:4.936,64:5.088,65:5.250,66:5.423,67:5.608,68:5.808,69:6.024,70:6.258,71:6.510},
-  caloCoeffBiennio: 0.018,       // stima: la revisione 2025 ha ridotto i coefficienti tra 1,55% e 2,18%
+  coeff: {57:4.204,58:4.308,59:4.419,60:4.536,61:4.661,62:4.795,63:4.936,64:5.088,65:5.250,66:5.423,67:5.608,68:5.808,69:6.024,70:6.258,71:6.510},   // 2025-2026, DM 436/2024
+  coeff2027: {57:4.153,58:4.254,59:4.361,60:4.475,61:4.596,62:4.725,63:4.863,64:5.009,65:5.166,66:5.334,67:5.514,68:5.707,69:5.914,70:6.139,71:6.382}, // dal 2027, DD 16/10/2026
+  caloCoeffBiennio: 0.015,       // stima dal 2029: la revisione 2027 ha ridotto i coefficienti tra 1,21% e 1,97%
+  // previdenza dedicata: anni in più sull'età del coefficiente (bozza di emendamento alla manovra 2027, non ancora legge)
+  dedicata: function(anno){ if(anno<=2026) return 0; if(anno<=2028) return 2; if(anno<=2031) return 3; return 4; },
   aliquotaComputo: 0.33,
   aliquotaRendimento: 2.44,      // % per anno (misto), SS.RR. Corte dei conti 1/2021
   maggiorazione18: 0.18, seiScatti: 0.15,
@@ -508,14 +529,15 @@ function primaUscita(inp, oggi){
   return best;
 }
 
-function coefficiente(etaAnni, anno, calo){
-  const t = REGOLE.coeff;
+function coefficiente(etaAnni, anno, calo, ded){
+  const t = anno >= 2027 ? REGOLE.coeff2027 : REGOLE.coeff;
+  if (ded) etaAnni += REGOLE.dedicata(anno);
   let c;
   if (etaAnni <= 57) c = t[57];
   else if (etaAnni >= 71) c = t[71];
   else { const a = Math.floor(etaAnni), f = etaAnni - a; c = t[a] + (t[a+1]-t[a])*f; }
   c = c/100;
-  if (calo && anno >= 2027){ const n = Math.floor((anno-2025)/2); c = c * Math.pow(1-REGOLE.caloCoeffBiennio, n); }
+  if (calo && anno >= 2029){ const n = Math.floor((anno-2027)/2); c = c * Math.pow(1-REGOLE.caloCoeffBiennio, n); }
   return c;
 }
 
@@ -590,14 +612,22 @@ function calcola(inp, dataUscita, oggi){
   const baseMolt = inp.reddito + REGOLE.maggiorazione18*stip + REGOLE.seiScatti*stip;
   const moltiplicatore = condMolt ? 5 * REGOLE.aliquotaComputo * baseMolt : 0;
 
-  const coeff = coefficiente(eta, anno, o.calo);
+  const coeff = coefficiente(eta, anno, o.calo, o.ded);
   const contrBase = montanteBase * coeff;
   const contrMolt = moltiplicatore * coeff;
   const lordo = retro + contrBase + contrMolt;
   const n = nettoAnnuo(lordo, inp.addiz);
+  // effetto della previdenza dedicata: confronto con il coefficiente dell'età reale
+  const dedAnni = o.ded ? REGOLE.dedicata(anno) : 0;
+  let dedNettoMese = 0;
+  if (dedAnni > 0){
+    const c0 = coefficiente(eta, anno, o.calo, false);
+    const n0 = nettoAnnuo(retro + (montanteBase + moltiplicatore) * c0, inp.addiz);
+    dedNettoMese = (n.netto - n0.netto) / 13;
+  }
   return {servAnni:servContr, servEff:servEff, eta:eta, N:N, pct:pct, retroPuro:retributivoPuro,
           retro:retro, contr:contrBase, molt:contrMolt, moltOn:condMolt, montante:montanteBase, stimato:stimato,
-          coeff:coeff, lordo:lordo, tasse:n.tasse, nettoAnnuo:n.netto, nettoMese:n.netto/13, lordoMese:lordo/13};
+          coeff:coeff, dedAnni:dedAnni, dedNettoMese:dedNettoMese, lordo:lordo, tasse:n.tasse, nettoAnnuo:n.netto, nettoMese:n.netto/13, lordoMese:lordo/13};
 }
 
 /* ===== Liquidazione di fine servizio =====
@@ -615,6 +645,41 @@ function mesiArrotondati(da, a){            // frazioni di mese: da 15 giorni in
   const g = Math.round((a - addMonths(da, m)) / 86400000);
   return g >= 15 ? m+1 : m;
 }
+/* ===== Riserva con moltiplicatore o ausiliaria =====
+   Ausiliaria (artt. 886, 992-996, 1870 D.Lgs. 66/2010): fino a 5 anni; indennità pari al 50% della differenza
+   tra lo stipendio del pari grado in servizio e la pensione; dal 2021 sul trattamento di ausiliaria si versano
+   i contributi, rivalutati con il montante; alla fine la quota contributiva si ricalcola con il coefficiente
+   dell'età di cessazione dall'ausiliaria (circolare Previmil 14/04/2022). Semplificazioni dichiarate: indennità
+   confrontata con lo stipendio annuo indicato; quota retributiva non ricalcolata (stima prudente). */
+const AUS = { anni: 5, indennita: 0.50, aliquotaContributi: 0.33, ritenute: 0.0915 };   // 8,80% previdenza + 0,35% credito
+function nettoAusiliaria(lordo, addizPerc){
+  const rit = lordo * AUS.ritenute;
+  const imp = lordo - rit;
+  const irpef = Math.max(0, irpefLorda(imp) - detrazionePensione(imp));
+  const addiz = imp * addizPerc/100;
+  return {ritenute: rit, tasse: irpef + addiz, netto: imp - irpef - addiz};
+}
+function calcolaAusiliaria(inp, dataUscita, oggi){
+  const rR = calcola({...inp, opz:{...inp.opz, molt:true}}, dataUscita, oggi);    // riserva con moltiplicatore
+  if (!rR.moltOn) return {ok:false};
+  const rB = calcola({...inp, opz:{...inp.opz, molt:false}}, dataUscita, oggi);   // pensione senza moltiplicatore
+  const stipPari = inp.baseFine > 0 ? inp.baseFine : inp.reddito;
+  const indennita = AUS.indennita * Math.max(0, stipPari - rB.lordo);
+  const lordoAus = rB.lordo + indennita;
+  const nAus = nettoAusiliaria(lordoAus, inp.addiz);
+  let m = rB.montante;
+  for (let k = 0; k < AUS.anni; k++) m = m * (1 + inp.rival/100) + AUS.aliquotaContributi * lordoAus;
+  const dataFine = addMonths(dataUscita, AUS.anni*12);
+  const etaFine = monthsBetween(inp.nascita, dataFine)/12;
+  const coeffFine = coefficiente(etaFine, dataFine.getFullYear(), inp.opz.calo, inp.opz.ded);
+  const lordoFine = rB.retro + m * coeffFine;
+  const nFine = nettoAnnuo(lordoFine, inp.addiz);
+  const risMese = rR.nettoMese, ausMese = nAus.netto/13, fineMese = nFine.netto/13;
+  return {ok:true, risMese:risMese, ausMese:ausMese, fineMese:fineMese, indennita:indennita, pensioneAus:rB.lordo,
+          ritenute:nAus.ritenute, montanteFine:m, coeffFine:coeffFine, etaFine:etaFine, dataFine:dataFine,
+          diff5anni:(ausMese - risMese)*13*AUS.anni, diffDopo:fineMese - risMese};
+}
+
 function calcolaLiquidazione(inp, dataUscita, decorrenzaPrima){
   const base = inp.baseFine > 0 ? inp.baseFine : inp.reddito;
   const mesiServ = monthsBetween(inp.inizio, dataUscita) + Math.round(inp.altriAnni*12);
@@ -1153,6 +1218,12 @@ function costruisciPdf(jsPDF, D){
   (D.liquidazione||[]).forEach(r => riga(r[0], r[1], r[2]));
   paragrafo(D.liquidazioneNote||'', 8.5);
 
+  if (D.ausiliaria && D.ausiliaria.length){
+    titolo('Riserva o ausiliaria (netti al mese)');
+    D.ausiliaria.forEach(r => riga(r[0], r[1], r[2]));
+    paragrafo(D.ausiliariaNote||'', 8.5);
+  }
+
   titolo('Calcolo dettagliato (importi annui)');
   D.calcolo.forEach(r => riga(r[0], r[1], r[2]));
 
@@ -1196,7 +1267,7 @@ function leggi(){
     addiz: Math.max(0, parseFloat($('addiz').value)||0),
     cassaRuolo: $('cassa').value, cassaDal: parseDate($('cassaDal').value),
     baseFine: num('baseFine'), altriAnni: Math.max(0, num('altriAnni')),
-    opz: {molt:$('oMolt').checked, agg:$('oAgg').checked, stime:$('oStime').checked, calo:$('oCalo').checked}
+    opz: {molt:$('oMolt').checked, agg:$('oAgg').checked, stime:$('oStime').checked, calo:$('oCalo').checked, ded:$('oDed').checked}
   };
 }
 
@@ -1261,6 +1332,13 @@ function disegna(){
   $('dContr').textContent = 'Montante '+eur(r.montante)+(r.stimato?' (stimato)':'')+' × coefficiente '+(r.coeff*100).toFixed(3).replace('.',',')+'%';
   $('rMolt').hidden = !r.moltOn;
   if (r.moltOn){ $('vMolt').textContent = eur(r.molt); $('dMolt').textContent = '5 volte il contributo dell’ultimo anno, alternativo all’ausiliaria'; }
+  $('rDed').hidden = !(r.dedAnni > 0);
+  if (r.dedAnni > 0){
+    $('vDed').textContent = '+ '+eur(r.dedNettoMese)+' al mese';
+    $('dDed').textContent = r.dedNettoMese >= 0.5
+      ? 'Netti, già compresi sopra: coefficiente di '+r.dedAnni+' anni in più. È una proposta, non ancora legge'
+      : 'Nessun effetto: anche con '+r.dedAnni+' anni in più resti sotto i 57 anni, e si usa comunque il coefficiente più basso';
+  }
   $('vLordoA').textContent = eur(r.lordo);
   $('vTasse').textContent = '− '+eur(r.tasse);
   $('vNettoA').textContent = eur(r.nettoAnnuo);
@@ -1270,6 +1348,19 @@ function disegna(){
   const preciso = inp.montante>0 && (inp.anz95>0 || inp.ancOggi>0);
   const banda = preciso ? 0.06 : 0.12;
   $('intervallo').textContent = eur(r.nettoMese*(1-banda))+' – '+eur(r.nettoMese*(1+banda));
+
+  // riserva o ausiliaria
+  const A = calcolaAusiliaria(inp, dataU, oggi);
+  $('ausNo').hidden = A.ok; $('ausSi').hidden = !A.ok;
+  if (A.ok){
+    $('vRis').textContent = eur(A.risMese);
+    $('vAus1').textContent = eur(A.ausMese);
+    $('dAus1').textContent = 'Pensione senza moltiplicatore ('+eur(A.pensioneAus)+' lordi l’anno) più indennità di ausiliaria ('+eur(A.indennita)+'), meno contributi e tasse';
+    $('vAus2').textContent = eur(A.fineMese);
+    $('dAus2').textContent = 'Ricalcolata a '+etaTxt(A.etaFine)+', da '+meseAnno(A.dataFine)+': montante '+eur(A.montanteFine)+' × '+(A.coeffFine*100).toFixed(3).replace('.',',')+'%';
+    $('vAusDiff').textContent = (A.diffDopo>=0?'+ ':'− ')+eur(Math.abs(A.diffDopo))+' al mese';
+    $('qAus').textContent = 'Nei primi 5 anni l’ausiliaria ti dà in totale '+eur(Math.abs(A.diff5anni))+(A.diff5anni>=0?' in più':' in meno')+' della riserva. Dopo, la pensione è '+(A.diffDopo>=0?'più alta':'più bassa')+' di '+eur(Math.abs(A.diffDopo))+' netti al mese. Stima prudente: non conta l’aumento della quota retributiva a fine ausiliaria.';
+  }
 
   // liquidazione di fine servizio
   const L = calcolaLiquidazione(inp, dataU, prima.decorrenza);
@@ -1343,7 +1434,7 @@ function segnaModificato(){
   if (stato.ultimo){ stato.sporco = true; $('hero').classList.add('sporco'); }
   $('pdfMsg').hidden = true;
 }
-['nascita','inizio','reddito','ruolo','montante','ancA','ancM','a95A','a95M','stip','rival','addiz','cassa','cassaDal','baseFine','altriAnni','oMolt','oAgg','oStime','oCalo'].forEach(id=>{
+['nascita','inizio','reddito','ruolo','montante','ancA','ancM','a95A','a95M','stip','rival','addiz','cassa','cassaDal','baseFine','altriAnni','oMolt','oAgg','oStime','oCalo','oDed'].forEach(id=>{
   $(id).addEventListener('input',()=>{ $(id).classList.remove('check'); segnaModificato(); });
   $(id).addEventListener('change',segnaModificato);
 });
@@ -1357,7 +1448,7 @@ $('reset').addEventListener('click',()=>{
   ['nascita','inizio','reddito','montante','ancA','ancM','a95A','a95M','stip','baseFine','cassaDal'].forEach(id=>{ $(id).value=''; $(id).classList.remove('check'); });
   $('cassa').value=''; $('cassaDalBox').hidden=true; $('altriAnni').value='0';
   $('rival').value='2.0'; $('addiz').value='2.2'; $('ruolo').value='60';
-  ['oMolt','oAgg','oStime','oCalo'].forEach(id=>{ $(id).checked=true; });
+  ['oMolt','oAgg','oStime','oCalo'].forEach(id=>{ $(id).checked=true; }); $('oDed').checked=false;
   $('file').value=''; $('found').hidden=true; stato.offset=0; stato.ultimo=null; stato.sporco=false; $('hero').classList.remove('sporco'); $('pdfMsg').hidden=true; aggiorna();
 });
 
@@ -1514,9 +1605,16 @@ $('pdf').addEventListener('click', async ()=>{
         ['Stipendio per buonuscita e Cassa', inp.baseFine>0 ? eur(inp.baseFine) : eur(inp.reddito)+' (come lo stipendio indicato)'],
         ['Altri anni utili alla buonuscita', String(inp.altriAnni).replace('.',',')],
         ['Moltiplicatore scelto', sino(inp.opz.molt)], ['Aumento aggiuntivo del comparto', sino(inp.opz.agg)],
-        ['Stime di speranza di vita dopo il 2028', sino(inp.opz.stime)], ['Coefficienti in calo dal 2027', sino(inp.opz.calo)]
+        ['Stime di speranza di vita dopo il 2028', sino(inp.opz.stime)], ['Coefficienti in calo dal 2029', sino(inp.opz.calo)], ['Previdenza dedicata (proposta, non ancora legge)', sino(inp.opz.ded)]
       ],
       scenari: scenari,
+      ausiliaria: (A => A.ok ? [
+        ['Riserva con moltiplicatore', eur(A.risMese)],
+        ['Ausiliaria, primi 5 anni (pensione + indennità di '+eur(A.indennita)+' l’anno)', eur(A.ausMese)],
+        ['Ausiliaria, dopo i 5 anni (ricalcolata da '+meseAnno(A.dataFine)+')', eur(A.fineMese)],
+        ['Differenza dopo i 5 anni', (A.diffDopo>=0?'+ ':'− ')+eur(Math.abs(A.diffDopo)), true]
+      ] : [])(calcolaAusiliaria(inp, dataU, new Date())),
+      ausiliariaNote: 'Indennità al 50% della differenza tra lo stipendio annuo indicato e la pensione; contributi del 33% sul trattamento di ausiliaria; coefficiente dell’età a fine ausiliaria. La quota retributiva non è ricalcolata (stima prudente). In ausiliaria restano gli obblighi di disponibilità e i limiti agli impieghi.',
       liquidazione: [
         ['Buonuscita (TFS) lorda, '+L.tfs.anni+' anni di servizio', eur(L.tfs.lordo)],
         ['Tasse sulla buonuscita (aliquota '+(L.tfs.aliquota*100).toFixed(1).replace('.',',')+'%)', '− '+eur(L.tfs.tasse)],
@@ -1533,6 +1631,7 @@ $('pdf').addEventListener('click', async ()=>{
         ['Quota retributiva'+(r.N>0?' ('+r.N.toFixed(1).replace('.',',')+' anni al '+r.pct.toFixed(1).replace('.',',')+'%)':''), eur(r.retro)],
         ['Quota contributiva (montante '+eur(r.montante)+(r.stimato?' stimato':'')+' × '+(r.coeff*100).toFixed(3).replace('.',',')+'%)', eur(r.contr)],
         ...(r.moltOn ? [['Moltiplicatore (5 volte il contributo dell’ultimo anno)', eur(r.molt)]] : []),
+        ...(r.dedAnni > 0 ? [['Di cui previdenza dedicata ('+r.dedAnni+' anni in più sul coefficiente), netti al mese', '+ '+eur(r.dedNettoMese)]] : []),
         ['Pensione lorda annua', eur(r.lordo), true],
         ['Irpef lorda', eur(irpefLorda(r.lordo))],
         ['Detrazione per redditi da pensione', '− '+eur(detrazionePensione(r.lordo))],
@@ -1546,14 +1645,14 @@ $('pdf').addEventListener('click', async ()=>{
         ['Aliquota quota retributiva', r.retroPuro ? 'Art. 54 DPR 1092/1973 (44% da 15 a 20 anni, +1,8% per anno, max 80%)' : '2,44% per anno (Corte dei conti SS.RR. 1/2021)'],
         ['Base pensionabile', 'Ultimo stipendio con maggiorazione 18% e sei scatti; quota B al 95%'],
         ['Aliquota di computo', '33%'],
-        ['Coefficiente di trasformazione', (r.coeff*100).toFixed(3).replace('.',',')+'% (tabella 2025-2026, DM 436/2024'+(inp.opz.calo && dataU.getFullYear()>=2027?', ridotta per la revisione ipotizzata':'')+')'],
+        ['Coefficiente di trasformazione', (r.coeff*100).toFixed(3).replace('.',',')+'% ('+(dataU.getFullYear()>=2027 ? 'tabella dal 2027, DD 16/10/2026' : 'tabella 2025-2026, DM 436/2024')+(inp.opz.calo && dataU.getFullYear()>=2029?', ridotta per la revisione ipotizzata':'')+(r.dedAnni>0?'; età aumentata di '+r.dedAnni+' anni per la previdenza dedicata, proposta':'')+')'],
         ['Requisiti usati', 'Circolare INPS n. 28/2026; L. 199/2025 art. 1 c. 180-181'],
         ['Buonuscita (TFS)', '1/12 dell’80% dello stipendio annuo x anni di servizio; tassazione separata sul 73,96% del lordo'],
         ['Indennità supplementare', '80% dello stipendio annuo x 2% fino al 2022, poi 2,5% (Marescialli) o 3% (Sovrintendenti, Appuntati, Carabinieri)'],
         ['Irpef 2026', '23% fino a 28.000 €; 33% fino a 50.000 €; 43% oltre'],
         ['Data del calcolo', it(new Date())]
       ],
-      avvertenze: 'Questo documento è una stima a scopo di orientamento, non un calcolo ufficiale. Semplifica alcune regole: base pensionabile, rivalutazioni, indennità accessorie, ausiliaria, pensione privilegiata e perequazione non sono considerate. Gli aumenti dei requisiti dopo il 2028, i coefficienti di trasformazione dal 2027 e l’eventuale esclusione di alcuni ruoli dall’aumento aggiuntivo sono ipotesi o dipendono da decreti non ancora pubblicati. Per l’importo definitivo fa fede il calcolo dell’INPS: verifica con il tuo estratto conto o con un patronato.'
+      avvertenze: 'Questo documento è una stima a scopo di orientamento, non un calcolo ufficiale. Semplifica alcune regole: base pensionabile, rivalutazioni, indennità accessorie, pensione privilegiata e perequazione non sono considerate; il confronto con l’ausiliaria è semplificato. Gli aumenti dei requisiti dopo il 2028, i coefficienti di trasformazione dal 2029, la previdenza dedicata e l’eventuale esclusione di alcuni ruoli dall’aumento aggiuntivo sono ipotesi o dipendono da decreti non ancora pubblicati. Per l’importo definitivo fa fede il calcolo dell’INPS: verifica con il tuo estratto conto o con un patronato.'
     };
     const doc = costruisciPdf(window.jspdf.jsPDF, D);
     const buf = doc.output('arraybuffer');
