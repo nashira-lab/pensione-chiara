@@ -320,7 +320,8 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
         </label>
         <fieldset style="border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0">
           <legend style="padding:0 6px;font-weight:500;font-size:16px">Ipotesi sulle regole future</legend>
-          <label class="ck"><input id="oMolt" type="checkbox" checked><span>Scelgo il moltiplicatore al posto dell’ausiliaria<small>Aggiunge 5 volte il contributo dell’ultimo anno, se esci per limite di età, con 40 anni di servizio o entro 5 anni dal limite.</small></span></label>
+          <label class="ck"><input id="oMolt" type="checkbox" checked><span>Scelgo il moltiplicatore al posto dell’ausiliaria<small>Aggiunge 5 volte il contributo dell’ultimo anno, se esci per limite di età o con 40 anni di servizio effettivo (le maggiorazioni non contano).</small></span></label>
+          <label class="ck"><input id="oMagg" type="checkbox" checked><span>Conto la maggiorazione di 1/5 per il servizio d’istituto<small>Un anno ogni cinque di servizio, fino a 5 anni. Anticipa la pensione e aumenta la quota retributiva. Se inserisci l’anzianità dall’estratto conto, uso quella.</small></span></label>
           <label class="ck"><input id="oAgg" type="checkbox" checked><span>Applico l’aumento aggiuntivo del comparto<small>+1 mese nel 2028, +2 nel 2029, +3 dal 2030 (legge di bilancio 2026). Un decreto potrà escludere alcuni ruoli.</small></span></label>
           <label class="ck"><input id="oStime" type="checkbox" checked><span>Includo le stime di speranza di vita dopo il 2028<small>Dal 2029 uso le previsioni della Ragioneria generale: non sono ancora decise.</small></span></label>
           <label class="ck"><input id="oCalo" type="checkbox" checked><span>Prevedo coefficienti più bassi dal 2029<small>Per il 2027 e il 2028 uso i coefficienti ufficiali. Dopo ipotizzo un calo dell’1,5% ogni due anni, come nell’ultima revisione.</small></span></label>
@@ -548,10 +549,22 @@ function monthsBetween(a, b){
 }
 function yearsAt(start, d){ return Math.max(0, monthsBetween(start, d)/12); }
 
+/* Maggiorazione di un quinto del servizio d'istituto (D.Lgs. 165/1997 art. 5 c. 1; COM artt. 1849 e ss.):
+   massimo 5 anni dal 1998; quelle maturate prima del 1998 restano valide anche oltre i 5 anni (INPS circ. 119/2018).
+   Vale per il diritto e, nella parte retributiva, anche per la misura; nel contributivo solo per il diritto. */
+function maggiorazioneAt(inp, d){
+  if (!inp.opz.magg) return 0;
+  const lim98 = new Date(1998,0,1);
+  const pre = yearsAt(inp.inizio, d < lim98 ? d : lim98) / 5;
+  if (d <= lim98) return pre;
+  if (pre >= 5) return pre;
+  const post = Math.max(0, yearsAt(inp.inizio > lim98 ? inp.inizio : lim98, d)) / 5;
+  return pre + Math.min(5 - pre, post);
+}
 /* anzianità contributiva (con maggiorazioni e riscatti) a una data */
 function contribAt(inp, d, oggi){
   if (inp.ancOggi > 0) return inp.ancOggi + Math.max(0, monthsBetween(oggi, d))/12;
-  return yearsAt(inp.inizio, d);
+  return yearsAt(inp.inizio, d) + maggiorazioneAt(inp, d);
 }
 function requisiti(anno, inp){
   const o = inp.opz;
@@ -633,14 +646,17 @@ function calcola(inp, dataUscita, oggi){
   const eta = monthsBetween(inp.nascita, dataUscita)/12;
 
   // anzianità al 31/12/1995 e sistema di calcolo
-  const y95 = inp.anz95 > 0 ? inp.anz95 : yearsAt(inp.inizio, new Date(1995,11,31));
+  const fine95 = new Date(1996,0,1), fine11 = new Date(2012,0,1);
+  const y95 = inp.anz95 > 0 ? inp.anz95 : yearsAt(inp.inizio, fine95) + maggiorazioneAt(inp, fine95);
   const retributivoPuro = y95 >= 18;
   let N, pct;
   if (retributivoPuro){
-    N = Math.min(y95 + 16, servEff);                          // retributivo fino al 31/12/2011
+    // retributivo fino al 31/12/2011: anzianità utile a quella data (servizio + maggiorazioni)
+    const y11 = (inp.anz95 > 0 ? inp.anz95 + yearsAt(fine95, fine11) : yearsAt(inp.inizio, fine11)) + (inp.anz95 > 0 ? 0 : maggiorazioneAt(inp, fine11));
+    N = Math.min(y11, servContr);
     pct = N < 15 ? N*44/15 : (N <= 20 ? 44 : 44 + 1.8*(N-20));
   } else {
-    N = Math.min(y95, servEff);
+    N = Math.min(y95, servContr);
     // DPR 1092/1973 art. 54 c. 1: 44% con almeno 15 anni; sotto i 15 anni 2,44% per anno (Corte dei conti SS.RR. 1/2021)
     pct = N >= 15 ? 44 : N * (servContr >= 20 ? REGOLE.aliquotaRendimento : 2.20);
   }
@@ -670,7 +686,8 @@ function calcola(inp, dataUscita, oggi){
   const adj = REGOLE.generale(anno, o.stime);
   const limiteMesi = inp.limite*12 + adj;
   const etaM = monthsBetween(inp.nascita, dataUscita);
-  const condMolt = o.molt && (etaM >= limiteMesi || servEff >= 40 || etaM >= limiteMesi - 60);
+  // limite di età, oppure a domanda con 40 anni di servizio effettivo (le maggiorazioni non contano): D.Lgs. 165/1997 art. 3 c. 7 e art. 7 c. 6
+  const condMolt = o.molt && (etaM >= limiteMesi || servEff >= 40);
   const baseMolt = redditoFine + REGOLE.maggiorazione18*stip + REGOLE.seiScatti*stip;
   const moltiplicatore = condMolt ? 5 * REGOLE.aliquotaComputo * baseMolt : 0;
 
@@ -1335,7 +1352,7 @@ function leggi(){
     addiz: Math.max(0, parseFloat($('addiz').value)||0),
     cassaRuolo: $('cassa').value, cassaDal: parseDate($('cassaDal').value),
     baseFine: num('baseFine'), altriAnni: Math.max(0, num('altriAnni')),
-    opz: {molt:$('oMolt').checked, agg:$('oAgg').checked, stime:$('oStime').checked, calo:$('oCalo').checked, ded:$('oDed').checked}
+    opz: {magg:$('oMagg').checked, molt:$('oMolt').checked, agg:$('oAgg').checked, stime:$('oStime').checked, calo:$('oCalo').checked, ded:$('oDed').checked}
   };
 }
 
@@ -1502,7 +1519,7 @@ function segnaModificato(){
   if (stato.ultimo){ stato.sporco = true; $('hero').classList.add('sporco'); }
   $('pdfMsg').hidden = true;
 }
-['nascita','inizio','reddito','ruolo','montante','ancA','ancM','a95A','a95M','stip','rival','cresc','montAnno','imponibili','addiz','cassa','cassaDal','baseFine','altriAnni','oMolt','oAgg','oStime','oCalo','oDed'].forEach(id=>{
+['nascita','inizio','reddito','ruolo','montante','ancA','ancM','a95A','a95M','stip','rival','cresc','montAnno','imponibili','addiz','cassa','cassaDal','baseFine','altriAnni','oMagg','oMolt','oAgg','oStime','oCalo','oDed'].forEach(id=>{
   $(id).addEventListener('input',()=>{ $(id).classList.remove('check'); segnaModificato(); });
   $(id).addEventListener('change',segnaModificato);
 });
@@ -1516,7 +1533,7 @@ $('reset').addEventListener('click',()=>{
   ['nascita','inizio','reddito','montante','ancA','ancM','a95A','a95M','stip','baseFine','cassaDal'].forEach(id=>{ $(id).value=''; $(id).classList.remove('check'); });
   $('cassa').value=''; $('cassaDalBox').hidden=true; $('altriAnni').value='0';
   $('rival').value='3.0'; $('cresc').value='2.0'; $('montAnno').value=''; $('imponibili').value=''; $('addiz').value='2.2'; $('ruolo').value='60';
-  ['oMolt','oAgg','oStime','oCalo'].forEach(id=>{ $(id).checked=true; }); $('oDed').checked=false;
+  ['oMagg','oMolt','oAgg','oStime','oCalo'].forEach(id=>{ $(id).checked=true; }); $('oDed').checked=false;
   $('file').value=''; $('found').hidden=true; stato.offset=0; stato.ultimo=null; stato.sporco=false; $('hero').classList.remove('sporco'); $('pdfMsg').hidden=true; aggiorna();
 });
 
@@ -1681,7 +1698,7 @@ $('pdf').addEventListener('click', async ()=>{
         ...(inp.cassaRuolo ? [['Iscritto alla Cassa dal', it(inp.cassaDal || inp.inizio)]] : []),
         ['Stipendio per buonuscita e Cassa', inp.baseFine>0 ? eur(inp.baseFine) : eur(inp.reddito)+' (come lo stipendio indicato)'],
         ['Altri anni utili alla buonuscita', String(inp.altriAnni).replace('.',',')],
-        ['Moltiplicatore scelto', sino(inp.opz.molt)], ['Aumento aggiuntivo del comparto', sino(inp.opz.agg)],
+        ['Maggiorazione di 1/5 del servizio', sino(inp.opz.magg)], ['Moltiplicatore scelto', sino(inp.opz.molt)], ['Aumento aggiuntivo del comparto', sino(inp.opz.agg)],
         ['Stime di speranza di vita dopo il 2028', sino(inp.opz.stime)], ['Coefficienti in calo dal 2029', sino(inp.opz.calo)], ['Previdenza dedicata (proposta, non ancora legge)', sino(inp.opz.ded)]
       ],
       scenari: scenari,
