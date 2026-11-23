@@ -238,7 +238,8 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
       </label>
       <label class="f" for="reddito">Imponibile previdenziale annuo
         <small>Tutto ciò su cui versi i contributi in un anno: stipendio, indennità, straordinari e tredicesima. Se metti solo lo stipendio fisso, la pensione esce più bassa del vero.</small>
-        <input id="reddito" type="number" inputmode="decimal" min="0" step="100" placeholder="per esempio 38000">
+        <input id="reddito" type="number" inputmode="decimal" min="0" step="100" placeholder="per esempio 42000">
+        <span id="redHint" class="hint" hidden style="display:block;margin-top:6px;color:#B4532A"></span>
       </label>
       <label class="f" for="cassa">Sei iscritto alla Cassa Sottufficiali?
         <small>È il fondo che paga l’indennità supplementare a fine servizio.</small>
@@ -303,7 +304,7 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
           <input id="montAnno" type="number" inputmode="numeric" min="1996" max="2100" step="1" placeholder="anno">
         </label>
         <label class="f" for="imponibili">Imponibili annui dall’estratto conto (facoltativo)
-          <small>Una riga per anno, per esempio “2019 38.500,00”. Con questi dati calcolo il montante anno per anno con i tassi ufficiali; per gli anni mancanti stimo dallo stipendio.</small>
+          <small>Una riga per anno o per periodo, per esempio “2019 38.500,00”: le righe dello stesso anno si sommano. Con questi dati calcolo il montante anno per anno con i tassi ufficiali; per gli anni mancanti stimo dallo stipendio.</small>
           <textarea id="imponibili" rows="5" placeholder="2019 38.500,00&#10;2020 39.100,00"></textarea>
         </label>
         <label class="f" for="rival">Rivalutazione del montante dal 2026 (%)
@@ -502,7 +503,7 @@ function leggiImponibili(testo){
     let v = m[2].replace(/\s/g,'');
     v = /,\d{1,2}$/.test(v) ? v.replace(/\./g,'').replace(',','.') : (/^\d{1,3}(\.\d{3})+$/.test(v) ? v.replace(/\./g,'') : v);
     const n = parseFloat(v), a = +m[1];
-    if (n > 0 && a >= 1996) out[a] = n;
+    if (n > 0 && a >= 1996) out[a] = (out[a] || 0) + n;    // l'estratto conto può dividere un anno in più periodi
   });
   return out;
 }
@@ -1523,6 +1524,14 @@ function segnaModificato(){
   $(id).addEventListener('input',()=>{ $(id).classList.remove('check'); segnaModificato(); });
   $(id).addEventListener('change',segnaModificato);
 });
+function controllaReddito(){
+  const v = parseFloat($('reddito').value), h = $('redHint');
+  let t = '';
+  if (v > 0 && v < 5000) t = 'Sembra un importo mensile: serve quello di un anno intero, con la tredicesima.';
+  else if (v >= 5000 && v < 30000) t = 'Valore basso: a fine carriera l’imponibile annuo di solito supera i 35.000 €. Controlla che comprenda indennità, straordinari e tredicesima, non solo lo stipendio fisso o il netto.';
+  h.textContent = t; h.hidden = !t;
+}
+$('reddito').addEventListener('input', controllaReddito);
 $('cassa').addEventListener('change',()=>{ $('cassaDalBox').hidden = !$('cassa').value; });
 $('calcola').addEventListener('click',()=>{
   stato.offset = 0; aggiorna();
@@ -1534,7 +1543,7 @@ $('reset').addEventListener('click',()=>{
   $('cassa').value=''; $('cassaDalBox').hidden=true; $('altriAnni').value='0';
   $('rival').value='3.0'; $('cresc').value='2.0'; $('montAnno').value=''; $('imponibili').value=''; $('addiz').value='2.2'; $('ruolo').value='60';
   ['oMagg','oMolt','oAgg','oStime','oCalo'].forEach(id=>{ $(id).checked=true; }); $('oDed').checked=false;
-  $('file').value=''; $('found').hidden=true; stato.offset=0; stato.ultimo=null; stato.sporco=false; $('hero').classList.remove('sporco'); $('pdfMsg').hidden=true; aggiorna();
+  $('file').value=''; $('found').hidden=true; $('redHint').hidden=true; stato.offset=0; stato.ultimo=null; stato.sporco=false; $('hero').classList.remove('sporco'); $('pdfMsg').hidden=true; aggiorna();
 });
 
 /* ===== Lettura documento (PDF) ===== */
@@ -1606,12 +1615,12 @@ $('file').addEventListener('change', async (e)=>{
     const ini = dataDa(t,['data (?:di )?assunzione','data (?:di )?arruolamento','inizio servizio','decorrenza (?:del )?servizio','data (?:di )?incorporazione']);
     if(ini){ segna('inizio', toISO(ini)); trovati.push('data di arruolamento'); }
     const mont = dopo(t,['montante contributivo','montante individuale','montante']);
-    if(mont){ segna('montante', Math.round(mont)); trovati.push('montante contributivo'); $('montante').closest('details').open = true; }
+    if(mont){ segna('montante', Math.round(mont)); trovati.push('montante contributivo '+eur(Math.round(mont))); $('montante').closest('details').open = true; }
     const imp = ultimo(t,['imponibile previdenziale','imponibile (?:ai fini )?pensionistico','imponibile inps','totale competenze','totale lordo']);
     if(imp && imp>200){
       const annuo = imp < 12000 ? imp*13 : imp;
-      segna('reddito', Math.round(annuo));
-      trovati.push(imp<12000 ? 'stipendio (mensile × 13)' : 'stipendio annuo');
+      segna('reddito', Math.round(annuo)); controllaReddito();
+      trovati.push(imp<12000 ? 'imponibile '+eur(imp)+' al mese, × 13 = '+eur(Math.round(annuo))+' l’anno' : 'imponibile annuo '+eur(Math.round(annuo)));
     }
     const stp = dopo(t,['stipendio tabellare','stipendio base','stipendio']);
     if(stp && stp>300 && stp<12000 && !$('stip').value){ segna('stip', Math.round(stp*13)); trovati.push('stipendio tabellare (mensile × 13)'); $('stip').closest('details').open = true; }
