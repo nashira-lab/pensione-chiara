@@ -90,9 +90,9 @@ h2{font-size:22px;font-weight:500;margin:0 0 4px}
 .grid{display:grid;gap:14px;margin-top:16px}
 label.f{display:block;font-weight:500;font-size:16px}
 label.f small{display:block;font-weight:300;color:var(--muted);font-size:14px;margin-top:1px}
-input[type=date],input[type=number],select{width:100%;margin-top:6px;padding:13px 14px;font:inherit;font-size:17px;color:var(--ink);background:var(--field);border:1.5px solid var(--line);border-radius:12px;appearance:none;-webkit-appearance:none;min-height:50px}
+input[type=date],input[type=number],select,textarea{width:100%;margin-top:6px;padding:13px 14px;font:inherit;font-size:17px;color:var(--ink);background:var(--field);border:1.5px solid var(--line);border-radius:12px;appearance:none;-webkit-appearance:none;min-height:50px}
 select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:38px}
-input:focus,select:focus{outline:3px solid var(--oro);outline-offset:1px;border-color:var(--oro)}
+input:focus,select:focus,textarea:focus{outline:3px solid var(--oro);outline-offset:1px;border-color:var(--oro)}
 .check{border-color:var(--oro)!important;box-shadow:0 0 0 3px rgba(227,179,65,.25)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:400px){.row2{grid-template-columns:1fr}}
@@ -236,8 +236,8 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
         <small>Da quando versi i contributi</small>
         <input id="inizio" type="date">
       </label>
-      <label class="f" for="reddito">Stipendio lordo annuo
-        <small>Quello su cui versi i contributi, con tredicesima. Sullo statino: imponibile previdenziale.</small>
+      <label class="f" for="reddito">Imponibile previdenziale annuo
+        <small>Tutto ciò su cui versi i contributi in un anno: stipendio, indennità, straordinari e tredicesima. Se metti solo lo stipendio fisso, la pensione esce più bassa del vero.</small>
         <input id="reddito" type="number" inputmode="decimal" min="0" step="100" placeholder="per esempio 38000">
       </label>
       <label class="f" for="cassa">Sei iscritto alla Cassa Sottufficiali?
@@ -295,12 +295,24 @@ button.reset:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
           <input id="stip" type="number" inputmode="decimal" min="0" step="100" placeholder="in euro">
         </label>
         <label class="f" for="montante">Montante contributivo
-          <small>Lo trovi nell’estratto conto. Se non lo sai, lo stimo io.</small>
+          <small>Lo trovi nell’estratto conto. Se non lo sai, lo stimo io dagli stipendi.</small>
           <input id="montante" type="number" inputmode="decimal" min="0" step="100" placeholder="in euro">
         </label>
-        <label class="f" for="rival">Rivalutazione annua del montante (%)
-          <small>Segue il PIL nominale: 4,04% nel 2026. Uso un valore prudente.</small>
-          <input id="rival" type="number" inputmode="decimal" min="0" max="6" step="0.1" value="2.0">
+        <label class="f" for="montAnno">Il montante è aggiornato al 31 dicembre del
+          <small>Di solito è l’anno prima di quello dell’estratto conto.</small>
+          <input id="montAnno" type="number" inputmode="numeric" min="1996" max="2100" step="1" placeholder="anno">
+        </label>
+        <label class="f" for="imponibili">Imponibili annui dall’estratto conto (facoltativo)
+          <small>Una riga per anno, per esempio “2019 38.500,00”. Con questi dati calcolo il montante anno per anno con i tassi ufficiali; per gli anni mancanti stimo dallo stipendio.</small>
+          <textarea id="imponibili" rows="5" placeholder="2019 38.500,00&#10;2020 39.100,00"></textarea>
+        </label>
+        <label class="f" for="rival">Rivalutazione del montante dal 2026 (%)
+          <small>Fino al 2025 uso i tassi ufficiali (4,04% nel 2024, 6,34% nel 2025). Dopo segue il PIL nominale: ipotizzo il 3%.</small>
+          <input id="rival" type="number" inputmode="decimal" min="0" max="8" step="0.1" value="3.0">
+        </label>
+        <label class="f" for="cresc">Aumento annuo dello stipendio (%)
+          <small>Rinnovi di contratto e scatti. Lo uso anche per stimare gli stipendi passati.</small>
+          <input id="cresc" type="number" inputmode="decimal" min="0" max="6" step="0.1" value="2.0">
         </label>
         <label class="f" for="addiz">Addizionali regionale e comunale (%)
           <small>Sono tasse locali sulla pensione. Il valore medio va bene.</small>
@@ -472,6 +484,56 @@ const REGOLE = {
   quotaStipendio: 0.60,          // quota dell'imponibile su cui si applicano 18% e scatti, se non indicata (ipotesi)
   irpef: [[28000,0.23],[50000,0.33],[Infinity,0.43]]
 };
+/* Coefficienti annui di capitalizzazione del montante (L. 335/1995 art. 1 c. 9): il montante maturato al 31/12 dell'anno
+   indicato si moltiplica per il coefficiente. 1996-2024: messaggio INPS n. 707 del 27/02/2026 (già con i recuperi
+   degli anni negativi); 2025: ISTAT, comunicato del Ministero del Lavoro del 21/10/2026 (1,063359). Dal 2026: ipotesi. */
+const CAPITALIZZAZIONE = {1996:1.055871,1997:1.053597,1998:1.056503,1999:1.051781,2000:1.047781,2001:1.043698,2002:1.041614,
+  2003:1.039272,2004:1.040506,2005:1.035386,2006:1.033937,2007:1.034625,2008:1.033201,2009:1.017935,2010:1.016165,2011:1.011344,
+  2012:1.001643,2013:1.000000,2014:1.005058,2015:1.004684,2016:1.005205,2017:1.013478,2018:1.018254,2019:1.019199,2020:1.000000,
+  2021:1.009756,2022:1.023082,2023:1.036622,2024:1.040445,2025:1.063359};
+function fattoreCap(anno, rival){ return CAPITALIZZAZIONE[anno] || (1 + rival/100); }
+/* imponibili annui incollati dall'estratto conto: righe con "anno importo" */
+function leggiImponibili(testo){
+  const out = {};
+  (testo||'').split(/\n/).forEach(r => {
+    const m = r.match(/\b((?:19|20)\d{2})\b\D*?((?:\d{1,3}(?:[.\s]\d{3})+|\d+)(?:,\d{1,2})?|\d+\.\d{1,2})\s*(?:€|euro)?\s*$/i);
+    if (!m) return;
+    let v = m[2].replace(/\s/g,'');
+    v = /,\d{1,2}$/.test(v) ? v.replace(/\./g,'').replace(',','.') : (/^\d{1,3}(\.\d{3})+$/.test(v) ? v.replace(/\./g,'') : v);
+    const n = parseFloat(v), a = +m[1];
+    if (n > 0 && a >= 1996) out[a] = n;
+  });
+  return out;
+}
+/* stipendio imponibile annuo nell'anno indicato: quello di oggi, fatto crescere (o riportato indietro) del tasso indicato */
+function redditoAnno(inp, anno){ return inp.reddito * Math.pow(1 + (inp.cresc||0)/100, anno - inp.annoRif); }
+/* frazione dell'anno solare coperta dal periodo [da, a) */
+function frazioneAnno(anno, da, a){
+  const i = new Date(anno,0,1), f = new Date(anno+1,0,1);
+  const x = da > i ? da : i, y = a < f ? a : f;
+  const giorni = (d1, d2) => Math.round((d2 - d1) / 86400000);   // arrotondo: l'ora legale sposta di un'ora
+  return y > x ? giorni(x, y) / giorni(i, f) : 0;                  // in giorni, sull'anno solare
+}
+/* Montante alla decorrenza (L. 335/1995 art. 1 c. 9; INPS: per la decorrenza nell'anno Y il montante è rivalutato
+   fino al 31/12 dell'anno Y-2 e si aggiungono, senza rivalutazione, i contributi degli anni Y-1 e Y).
+   periodi: elenco di {da, a, annuo(anno)} con l'imponibile annuo; base: montante noto al 31/12 di annoBase. */
+function montanteAlla(decorrenza, periodi, base, annoBase, rival, anno0){
+  const Y = decorrenza.getFullYear();
+  let M = base > 0 ? base : 0;
+  const primo = base > 0 ? annoBase + 1 : anno0;
+  for (let y = primo; y <= Y; y++){
+    if (y-1 <= Y-2 && (base > 0 ? y-1 >= annoBase : y-1 >= anno0)) M *= fattoreCap(y-1, rival);
+    let c = 0;
+    for (const p of periodi){
+      const fr = frazioneAnno(y, p.da, p.a);
+      if (fr <= 0) continue;
+      const noto = p.noti ? p.noti[y] : undefined;        // imponibile dell'estratto conto: già riferito ai mesi lavorati
+      c += REGOLE.aliquotaComputo * (noto !== undefined ? noto : p.annuo(y) * fr);
+    }
+    M += c;
+  }
+  return M;
+}
 
 function addMonths(d, n){
   const x = new Date(d.getFullYear(), d.getMonth()+n, 1);
@@ -579,37 +641,37 @@ function calcola(inp, dataUscita, oggi){
     pct = N < 15 ? N*44/15 : (N <= 20 ? 44 : 44 + 1.8*(N-20));
   } else {
     N = Math.min(y95, servEff);
-    pct = N * (servContr >= 20 ? REGOLE.aliquotaRendimento : 2.20);
+    // DPR 1092/1973 art. 54 c. 1: 44% con almeno 15 anni; sotto i 15 anni 2,44% per anno (Corte dei conti SS.RR. 1/2021)
+    pct = N >= 15 ? 44 : N * (servContr >= 20 ? REGOLE.aliquotaRendimento : 2.20);
   }
   pct = Math.min(80, pct);
   const yA = Math.min(N, Math.max(0, y95 - 3));              // anzianità fino al 31/12/1992 (quota A)
   const quotaAfrac = N > 0 ? yA/N : 0;
 
   // base pensionabile: ultimo stipendio + 18% e sei scatti sulla parte stipendiale
-  const stip = inp.stip > 0 ? Math.min(inp.stip, inp.reddito) : inp.reddito*REGOLE.quotaStipendio;
+  const crescita = redditoAnno(inp, anno) / inp.reddito;        // stipendio dell'anno di uscita rispetto a oggi
+  const redditoFine = inp.reddito * crescita;
+  const stip = (inp.stip > 0 ? Math.min(inp.stip, inp.reddito) : inp.reddito*REGOLE.quotaStipendio) * crescita;
   const scatti = REGOLE.seiScatti * stip * (1+REGOLE.maggiorazione18);
-  const baseA = inp.reddito + REGOLE.maggiorazione18*stip + scatti;
+  const baseA = redditoFine + REGOLE.maggiorazione18*stip + scatti;
   const baseB = baseA * REGOLE.rapportoBaseB;
   const retro = (baseA*quotaAfrac + baseB*(1-quotaAfrac)) * pct/100;
 
   // montante contributivo
   const dal = retributivoPuro ? new Date(2012,0,1) : new Date(1996,0,1);
   const inizioContr = inp.inizio > dal ? inp.inizio : dal;
-  const oggiRef = oggi;
-  const anniContrOggi = Math.max(0, yearsAt(inizioContr, oggiRef));
-  const anniFuturi = Math.max(0, servEff - yearsAt(inp.inizio, oggiRef));
-  let m0 = inp.montante, stimato = false;
-  if (!(m0 > 0)){ stimato = true; m0 = REGOLE.aliquotaComputo * inp.reddito * anniContrOggi; }
-  const rivalutazione = m0 * (Math.pow(1+inp.rival/100, Math.max(0, anniFuturi-2)) - 1);
-  const mf = REGOLE.aliquotaComputo * inp.reddito * anniFuturi;
-  const montanteBase = m0 + rivalutazione + mf;
+  const stimato = !(inp.montante > 0);
+  const servizio = {da: inizioContr, a: dataUscita, annuo: y => redditoAnno(inp, y), noti: inp.imponibili};
+  const anniNoti = Object.keys(inp.imponibili||{}).filter(a => +a >= inizioContr.getFullYear() && +a <= anno && (stimato || +a > inp.montanteAnno)).length;
+  const montanteBase = montanteAlla(dataUscita, [servizio], stimato ? 0 : inp.montante, inp.montanteAnno,
+                                    inp.rival, inizioContr.getFullYear());
 
   // moltiplicatore (D.Lgs. 165/1997 art. 3 c. 7): 5 volte il contributo dell'ultimo anno
   const adj = REGOLE.generale(anno, o.stime);
   const limiteMesi = inp.limite*12 + adj;
   const etaM = monthsBetween(inp.nascita, dataUscita);
   const condMolt = o.molt && (etaM >= limiteMesi || servEff >= 40 || etaM >= limiteMesi - 60);
-  const baseMolt = inp.reddito + REGOLE.maggiorazione18*stip + REGOLE.seiScatti*stip;
+  const baseMolt = redditoFine + REGOLE.maggiorazione18*stip + REGOLE.seiScatti*stip;
   const moltiplicatore = condMolt ? 5 * REGOLE.aliquotaComputo * baseMolt : 0;
 
   const coeff = coefficiente(eta, anno, o.calo, o.ded);
@@ -627,7 +689,7 @@ function calcola(inp, dataUscita, oggi){
   }
   return {servAnni:servContr, servEff:servEff, eta:eta, N:N, pct:pct, retroPuro:retributivoPuro,
           retro:retro, contr:contrBase, molt:contrMolt, moltOn:condMolt, montante:montanteBase, stimato:stimato,
-          coeff:coeff, dedAnni:dedAnni, dedNettoMese:dedNettoMese, lordo:lordo, tasse:n.tasse, nettoAnnuo:n.netto, nettoMese:n.netto/13, lordoMese:lordo/13};
+          coeff:coeff, anniNoti:anniNoti, redditoFine:redditoFine, inizioContr:inizioContr, dedAnni:dedAnni, dedNettoMese:dedNettoMese, lordo:lordo, tasse:n.tasse, nettoAnnuo:n.netto, nettoMese:n.netto/13, lordoMese:lordo/13};
 }
 
 /* ===== Liquidazione di fine servizio =====
@@ -663,13 +725,15 @@ function calcolaAusiliaria(inp, dataUscita, oggi){
   const rR = calcola({...inp, opz:{...inp.opz, molt:true}}, dataUscita, oggi);    // riserva con moltiplicatore
   if (!rR.moltOn) return {ok:false};
   const rB = calcola({...inp, opz:{...inp.opz, molt:false}}, dataUscita, oggi);   // pensione senza moltiplicatore
-  const stipPari = inp.baseFine > 0 ? inp.baseFine : inp.reddito;
+  const stipPari = (inp.baseFine > 0 ? inp.baseFine : inp.reddito) * redditoAnno(inp, dataUscita.getFullYear()) / inp.reddito;
   const indennita = AUS.indennita * Math.max(0, stipPari - rB.lordo);
   const lordoAus = rB.lordo + indennita;
   const nAus = nettoAusiliaria(lordoAus, inp.addiz);
-  let m = rB.montante;
-  for (let k = 0; k < AUS.anni; k++) m = m * (1 + inp.rival/100) + AUS.aliquotaContributi * lordoAus;
   const dataFine = addMonths(dataUscita, AUS.anni*12);
+  const servizio = {da: rB.inizioContr, a: dataUscita, annuo: y => redditoAnno(inp, y), noti: inp.imponibili};
+  const ausiliaria = {da: dataUscita, a: dataFine, annuo: () => lordoAus};   // 33% sul trattamento di ausiliaria
+  const m = montanteAlla(dataFine, [servizio, ausiliaria], inp.montante > 0 ? inp.montante : 0, inp.montanteAnno,
+                         inp.rival, rB.inizioContr.getFullYear());
   const etaFine = monthsBetween(inp.nascita, dataFine)/12;
   const coeffFine = coefficiente(etaFine, dataFine.getFullYear(), inp.opz.calo, inp.opz.ded);
   const lordoFine = rB.retro + m * coeffFine;
@@ -681,7 +745,7 @@ function calcolaAusiliaria(inp, dataUscita, oggi){
 }
 
 function calcolaLiquidazione(inp, dataUscita, decorrenzaPrima){
-  const base = inp.baseFine > 0 ? inp.baseFine : inp.reddito;
+  const base = (inp.baseFine > 0 ? inp.baseFine : inp.reddito) * redditoAnno(inp, dataUscita.getFullYear()) / inp.reddito;
   const mesiServ = monthsBetween(inp.inizio, dataUscita) + Math.round(inp.altriAnni*12);
   const anni = Math.floor(mesiServ/12) + ((mesiServ%12) > 6 ? 1 : 0);      // oltre 6 mesi = anno intero
   const lordo = base * LIQ.quotaBase / 12 * anni;
@@ -1264,6 +1328,10 @@ function leggi(){
     anz95: num('a95A') + num('a95M')/12,
     stip: num('stip'),
     rival: Math.max(0, parseFloat($('rival').value)||0),
+    cresc: Math.max(0, parseFloat($('cresc').value)||0),
+    imponibili: leggiImponibili($('imponibili').value),
+    montanteAnno: parseInt($('montAnno').value,10) || (new Date().getFullYear()-1),
+    annoRif: new Date().getFullYear(),
     addiz: Math.max(0, parseFloat($('addiz').value)||0),
     cassaRuolo: $('cassa').value, cassaDal: parseDate($('cassaDal').value),
     baseFine: num('baseFine'), altriAnni: Math.max(0, num('altriAnni')),
@@ -1280,7 +1348,7 @@ function aggiorna(){
     const mancano = [];
     if(!parseDate($('nascita').value)) mancano.push('data di nascita');
     if(!parseDate($('inizio').value)) mancano.push('data di arruolamento');
-    if(!(parseFloat($('reddito').value)>0)) mancano.push('stipendio lordo annuo');
+    if(!(parseFloat($('reddito').value)>0)) mancano.push('imponibile previdenziale annuo');
     cm.hidden = false; cm.className = 'msg';
     cm.textContent = mancano.length ? 'Per calcolare mancano: '+mancano.join(', ')+'.' : 'La data di arruolamento deve essere successiva alla nascita.';
     return;
@@ -1329,7 +1397,7 @@ function disegna(){
     ? (r.retroPuro ? 'Sistema retributivo fino al 2011: ' : 'Sistema misto, anni fino al 1995: ')+r.N.toFixed(1).replace('.',',')+' anni al '+r.pct.toFixed(1).replace('.',',')+'% (max 80%) della base pensionabile'
     : 'Nessun servizio nel periodo retributivo: pensione tutta contributiva';
   $('vContr').textContent = eur(r.contr);
-  $('dContr').textContent = 'Montante '+eur(r.montante)+(r.stimato?' (stimato)':'')+' × coefficiente '+(r.coeff*100).toFixed(3).replace('.',',')+'%';
+  $('dContr').textContent = 'Montante '+eur(r.montante)+(r.stimato ? (r.anniNoti ? ' (calcolato da '+r.anniNoti+' anni dell’estratto conto, gli altri stimati)' : ' (stimato dagli stipendi)') : '')+' × coefficiente '+(r.coeff*100).toFixed(3).replace('.',',')+'%';
   $('rMolt').hidden = !r.moltOn;
   if (r.moltOn){ $('vMolt').textContent = eur(r.molt); $('dMolt').textContent = '5 volte il contributo dell’ultimo anno, alternativo all’ausiliaria'; }
   $('rDed').hidden = !(r.dedAnni > 0);
@@ -1434,7 +1502,7 @@ function segnaModificato(){
   if (stato.ultimo){ stato.sporco = true; $('hero').classList.add('sporco'); }
   $('pdfMsg').hidden = true;
 }
-['nascita','inizio','reddito','ruolo','montante','ancA','ancM','a95A','a95M','stip','rival','addiz','cassa','cassaDal','baseFine','altriAnni','oMolt','oAgg','oStime','oCalo','oDed'].forEach(id=>{
+['nascita','inizio','reddito','ruolo','montante','ancA','ancM','a95A','a95M','stip','rival','cresc','montAnno','imponibili','addiz','cassa','cassaDal','baseFine','altriAnni','oMolt','oAgg','oStime','oCalo','oDed'].forEach(id=>{
   $(id).addEventListener('input',()=>{ $(id).classList.remove('check'); segnaModificato(); });
   $(id).addEventListener('change',segnaModificato);
 });
@@ -1447,7 +1515,7 @@ $('slider').addEventListener('input',e=>{ stato.offset=parseInt(e.target.value,1
 $('reset').addEventListener('click',()=>{
   ['nascita','inizio','reddito','montante','ancA','ancM','a95A','a95M','stip','baseFine','cassaDal'].forEach(id=>{ $(id).value=''; $(id).classList.remove('check'); });
   $('cassa').value=''; $('cassaDalBox').hidden=true; $('altriAnni').value='0';
-  $('rival').value='2.0'; $('addiz').value='2.2'; $('ruolo').value='60';
+  $('rival').value='3.0'; $('cresc').value='2.0'; $('montAnno').value=''; $('imponibili').value=''; $('addiz').value='2.2'; $('ruolo').value='60';
   ['oMolt','oAgg','oStime','oCalo'].forEach(id=>{ $(id).checked=true; }); $('oDed').checked=false;
   $('file').value=''; $('found').hidden=true; stato.offset=0; stato.ultimo=null; stato.sporco=false; $('hero').classList.remove('sporco'); $('pdfMsg').hidden=true; aggiorna();
 });
@@ -1474,6 +1542,14 @@ async function testoPdf(file){
 }
 const IMP = /(\d{1,3}(?:\.\d{3})*,\d{2})/;
 function numIt(s){ return parseFloat(s.replace(/\./g,'').replace(',','.')); }
+function ultimo(testo, etichette){
+  for(const e of etichette){
+    const re = new RegExp(e+'[^0-9]{0,40}?'+IMP.source,'gi');
+    const tutti = [...testo.matchAll(re)];
+    if(tutti.length) return numIt(tutti[tutti.length-1][1]);
+  }
+  return null;
+}
 function dopo(testo, etichette, lung){
   for(const e of etichette){
     const re = new RegExp(e+'[^0-9]{0,40}?'+IMP.source,'i');
@@ -1514,7 +1590,7 @@ $('file').addEventListener('change', async (e)=>{
     if(ini){ segna('inizio', toISO(ini)); trovati.push('data di arruolamento'); }
     const mont = dopo(t,['montante contributivo','montante individuale','montante']);
     if(mont){ segna('montante', Math.round(mont)); trovati.push('montante contributivo'); $('montante').closest('details').open = true; }
-    const imp = dopo(t,['imponibile previdenziale','imponibile (?:ai fini )?pensionistico','imponibile inps','totale competenze','totale lordo']);
+    const imp = ultimo(t,['imponibile previdenziale','imponibile (?:ai fini )?pensionistico','imponibile inps','totale competenze','totale lordo']);
     if(imp && imp>200){
       const annuo = imp < 12000 ? imp*13 : imp;
       segna('reddito', Math.round(annuo));
@@ -1592,13 +1668,14 @@ $('pdf').addEventListener('click', async ()=>{
       requisito: prima.requisito, maturazione: meseAnno(prima.maturazione), finestra: prima.finestra,
       dati: [
         ['Data di nascita', it(inp.nascita)], ['Data di arruolamento', it(inp.inizio)],
-        ['Stipendio lordo annuo (con tredicesima)', eur(inp.reddito)],
+        ['Imponibile previdenziale annuo di oggi', eur(inp.reddito)],
         ['Limite di età del ruolo', inp.limite+' anni'],
         ['Anzianità contributiva di oggi', inp.ancOggi>0 ? aa(inp.ancOggi)+' (da estratto conto)' : 'calcolata dall’arruolamento'],
         ['Anzianità utile al 31/12/1995', inp.anz95>0 ? aa(inp.anz95)+' (da estratto conto)' : 'calcolata dall’arruolamento'],
         ['Stipendio e R.I.A. (voci maggiorabili)', inp.stip>0 ? eur(inp.stip) : 'stimato al 60% dell’imponibile'],
-        ['Montante contributivo', inp.montante>0 ? eur(inp.montante)+' (da estratto conto)' : 'stimato'],
-        ['Rivalutazione annua ipotizzata', String(inp.rival).replace('.',',')+'%'],
+        ['Montante contributivo', inp.montante>0 ? eur(inp.montante)+' al 31/12/'+inp.montanteAnno+' (da estratto conto)' : 'stimato dagli stipendi'],
+        ['Rivalutazione del montante', 'tassi ufficiali fino al 2025, poi '+String(inp.rival).replace('.',',')+'% l’anno'],
+        ['Aumento annuo dello stipendio', String(inp.cresc).replace('.',',')+'%'],
         ['Addizionali regionale e comunale', String(inp.addiz).replace('.',',')+'%'],
         ['Cassa Sottufficiali', inp.cassaRuolo==='M' ? 'iscritto come Maresciallo (Ispettore)' : inp.cassaRuolo==='S' ? 'iscritto come Sovrintendente, Appuntato o Carabiniere' : 'non iscritto o non indicato'],
         ...(inp.cassaRuolo ? [['Iscritto alla Cassa dal', it(inp.cassaDal || inp.inizio)]] : []),
@@ -1629,7 +1706,7 @@ $('pdf').addEventListener('click', async ()=>{
       liquidazioneNote: 'La buonuscita è pagata dall’INPS, l’indennità supplementare dalla Cassa di Previdenza delle Forze Armate. Importi stimati sullo stipendio indicato.',
       calcolo: [
         ['Quota retributiva'+(r.N>0?' ('+r.N.toFixed(1).replace('.',',')+' anni al '+r.pct.toFixed(1).replace('.',',')+'%)':''), eur(r.retro)],
-        ['Quota contributiva (montante '+eur(r.montante)+(r.stimato?' stimato':'')+' × '+(r.coeff*100).toFixed(3).replace('.',',')+'%)', eur(r.contr)],
+        ['Quota contributiva (montante '+eur(r.montante)+(r.stimato ? (r.anniNoti ? ', '+r.anniNoti+' anni da estratto conto' : ' stimato') : '')+' × '+(r.coeff*100).toFixed(3).replace('.',',')+'%)', eur(r.contr)],
         ...(r.moltOn ? [['Moltiplicatore (5 volte il contributo dell’ultimo anno)', eur(r.molt)]] : []),
         ...(r.dedAnni > 0 ? [['Di cui previdenza dedicata ('+r.dedAnni+' anni in più sul coefficiente), netti al mese', '+ '+eur(r.dedNettoMese)]] : []),
         ['Pensione lorda annua', eur(r.lordo), true],
